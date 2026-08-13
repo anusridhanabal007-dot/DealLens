@@ -51,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({ apiStatus }) => {
               backgroundColor: apiStatus === 'online' ? '#10b981' : apiStatus === 'offline' ? '#f43f5e' : '#f59e0b'
             }} />
             <span style={{ fontSize: '0.8rem' }}>
-              Backend: {apiStatus === 'online' ? 'Connected (localhost:8000)' : apiStatus === 'offline' ? 'Offline' : 'Connecting...'}
+              Backend: {apiStatus === 'online' ? 'Connected' : apiStatus === 'offline' ? 'Offline' : 'Connecting...'}
             </span>
           </div>
         </div>

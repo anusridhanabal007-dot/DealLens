@@ -11,7 +11,7 @@ import { SpecComparison } from './components/SpecComparison';
 
 import type { ComparisonResponse, Weights } from './types';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const DEFAULT_WEIGHTS: Weights = {
   price: 0.50,
