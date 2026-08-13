@@ -19,11 +19,67 @@ export const Controls: React.FC<ControlsProps> = ({
   onReset,
   isRecalculating = false
 }) => {
-  const handleSliderChange = (key: keyof Weights, value: number) => {
-    onWeightsChange({
-      ...weights,
-      [key]: value
-    });
+  const toPercent = (val: number) => (val <= 1 ? Math.round(val * 100) : Math.round(val));
+
+  const currentPercents: Record<keyof Weights, number> = {
+    price: toPercent(weights.price),
+    seller: toPercent(weights.seller),
+    warranty: toPercent(weights.warranty),
+    delivery: toPercent(weights.delivery)
+  };
+
+  const totalWeight =
+    currentPercents.price +
+    currentPercents.seller +
+    currentPercents.warranty +
+    currentPercents.delivery;
+
+  const handleSliderChange = (changedKey: keyof Weights, rawVal: number) => {
+    const newVal = Math.max(0, Math.min(100, Math.round(rawVal)));
+    const otherKeys = (['price', 'seller', 'warranty', 'delivery'] as (keyof Weights)[]).filter(
+      (k) => k !== changedKey
+    );
+
+    const remainingNew = 100 - newVal;
+    const otherSum = otherKeys.reduce((acc, k) => acc + currentPercents[k], 0);
+
+    const updated: Record<keyof Weights, number> = {
+      ...currentPercents,
+      [changedKey]: newVal
+    };
+
+    if (otherSum > 0) {
+      let sumAllocated = 0;
+      otherKeys.forEach((k) => {
+        const allocated = Math.max(0, Math.round((currentPercents[k] / otherSum) * remainingNew));
+        updated[k] = allocated;
+        sumAllocated += allocated;
+      });
+
+      const diff = remainingNew - sumAllocated;
+      if (diff !== 0) {
+        let targetKey = otherKeys[0];
+        for (const k of otherKeys) {
+          if (updated[k] > updated[targetKey]) {
+            targetKey = k;
+          }
+        }
+        updated[targetKey] = Math.max(0, updated[targetKey] + diff);
+      }
+    } else {
+      const share = Math.floor(remainingNew / otherKeys.length);
+      let sumAllocated = 0;
+      otherKeys.forEach((k) => {
+        updated[k] = share;
+        sumAllocated += share;
+      });
+      const diff = remainingNew - sumAllocated;
+      if (diff !== 0) {
+        updated[otherKeys[0]] = Math.max(0, updated[otherKeys[0]] + diff);
+      }
+    }
+
+    onWeightsChange(updated);
   };
 
   return (
@@ -34,6 +90,19 @@ export const Controls: React.FC<ControlsProps> = ({
           <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ffffff', margin: 0 }}>
             Custom Value Weight Tuning
           </h3>
+          <div
+            style={{
+              background: totalWeight === 100 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+              border: totalWeight === 100 ? '1px solid #10b981' : '1px solid #f43f5e',
+              color: totalWeight === 100 ? '#10b981' : '#f43f5e',
+              padding: '4px 12px',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              fontWeight: 700
+            }}
+          >
+            Total Weight: {totalWeight}%
+          </div>
           {isRecalculating && (
             <span style={{ fontSize: '0.75rem', color: '#6366f1', fontWeight: 600 }}>Recalculating...</span>
           )}
@@ -85,14 +154,14 @@ export const Controls: React.FC<ControlsProps> = ({
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600, marginBottom: '6px' }}>
             <span>Price Weight</span>
-            <span style={{ color: '#6366f1' }}>{Math.round(weights.price * 100)}%</span>
+            <span style={{ color: '#6366f1' }}>{currentPercents.price}%</span>
           </div>
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.05"
-            value={weights.price}
+            max="100"
+            step="1"
+            value={currentPercents.price}
             onChange={(e) => handleSliderChange('price', parseFloat(e.target.value))}
             style={{ width: '100%', accentColor: '#6366f1', cursor: 'pointer' }}
           />
@@ -102,14 +171,14 @@ export const Controls: React.FC<ControlsProps> = ({
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600, marginBottom: '6px' }}>
             <span>Seller Weight</span>
-            <span style={{ color: '#f59e0b' }}>{Math.round(weights.seller * 100)}%</span>
+            <span style={{ color: '#f59e0b' }}>{currentPercents.seller}%</span>
           </div>
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.05"
-            value={weights.seller}
+            max="100"
+            step="1"
+            value={currentPercents.seller}
             onChange={(e) => handleSliderChange('seller', parseFloat(e.target.value))}
             style={{ width: '100%', accentColor: '#f59e0b', cursor: 'pointer' }}
           />
@@ -119,14 +188,14 @@ export const Controls: React.FC<ControlsProps> = ({
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600, marginBottom: '6px' }}>
             <span>Warranty Weight</span>
-            <span style={{ color: '#a855f7' }}>{Math.round(weights.warranty * 100)}%</span>
+            <span style={{ color: '#a855f7' }}>{currentPercents.warranty}%</span>
           </div>
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.05"
-            value={weights.warranty}
+            max="100"
+            step="1"
+            value={currentPercents.warranty}
             onChange={(e) => handleSliderChange('warranty', parseFloat(e.target.value))}
             style={{ width: '100%', accentColor: '#a855f7', cursor: 'pointer' }}
           />
@@ -136,14 +205,14 @@ export const Controls: React.FC<ControlsProps> = ({
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600, marginBottom: '6px' }}>
             <span>Delivery Weight</span>
-            <span style={{ color: '#10b981' }}>{Math.round(weights.delivery * 100)}%</span>
+            <span style={{ color: '#10b981' }}>{currentPercents.delivery}%</span>
           </div>
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.05"
-            value={weights.delivery}
+            max="100"
+            step="1"
+            value={currentPercents.delivery}
             onChange={(e) => handleSliderChange('delivery', parseFloat(e.target.value))}
             style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer' }}
           />

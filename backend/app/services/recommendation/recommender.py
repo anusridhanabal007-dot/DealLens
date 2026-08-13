@@ -1,6 +1,6 @@
 import json
 import httpx
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.config import settings
 
 class RecommendationEngine:
@@ -77,13 +77,15 @@ class RecommendationEngine:
         winner_listing: Dict[str, Any],
         reasons: List[str],
         trade_offs: List[str],
-        all_listings: List[Dict[str, Any]]
+        all_listings: List[Dict[str, Any]],
+        overall_score: Optional[float] = None
     ) -> str:
         """Deterministic fact-based explanation fallback when LLM is unavailable."""
+        score_display = f"{overall_score}/100" if overall_score is not None else "the highest"
         lines = [
-            f"🏆 {winner_listing['product_name']} (Listing {winner_listing['id'].upper()[-1] if len(winner_listing['id'])==1 else winner_listing['id']}) is recommended as the Best Overall Deal.",
+            f"🏆 {winner_listing['product_name']} (Listing {winner_listing['id']}) is recommended as the Best Overall Deal.",
             "",
-            f"It achieves the top overall value score with an effective price of ₹{winner_listing['effective_price']:,.0f} and seller rating of {winner_listing.get('seller_rating', 4.5)}★.",
+            f"It achieves {score_display} overall value score with an effective price of ₹{winner_listing['effective_price']:,.0f} and seller rating of {winner_listing.get('seller_rating', 'N/A')}★.",
             ""
         ]
 
@@ -116,7 +118,7 @@ class RecommendationEngine:
         trade_offs = winner_info["trade_offs"]
 
         if not settings.LLM_API_KEY:
-            exp = self.generate_deterministic_explanation(winner_listing, reasons, trade_offs, all_listings)
+            exp = self.generate_deterministic_explanation(winner_listing, reasons, trade_offs, all_listings, overall_score=winner_info.get("overall_score"))
             return {
                 "ai_explanation": exp,
                 "ai_mode": "Deterministic fallback"
@@ -159,7 +161,7 @@ Format as 3 short paragraphs with emojis and bullet points. Be factual, concise,
             pass
 
         # Fallback if API request fails
-        exp = self.generate_deterministic_explanation(winner_listing, reasons, trade_offs, all_listings)
+        exp = self.generate_deterministic_explanation(winner_listing, reasons, trade_offs, all_listings, overall_score=winner_info.get("overall_score"))
         return {
             "ai_explanation": exp,
             "ai_mode": "Deterministic fallback"

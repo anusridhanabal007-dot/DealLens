@@ -73,14 +73,25 @@ export const App: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        let errText = `API Error (${response.status}): ${response.statusText}`;
+        try {
+          const errData = await response.json();
+          if (errData && errData.detail) {
+            errText = typeof errData.detail === 'string' ? errData.detail : JSON.stringify(errData.detail);
+          }
+        } catch (_) {}
+        throw new Error(errText);
       }
 
       const data: ComparisonResponse = await response.json();
       setComparisonResult(data);
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || 'Failed to connect to backend server. Make sure FastAPI is running on http://localhost:8000.');
+      if (err.message && err.message.includes('Failed to fetch')) {
+        setErrorMsg('Unable to connect to DealLens AI backend server. Please ensure FastAPI is running on http://localhost:8000.');
+      } else {
+        setErrorMsg(err.message || 'Failed to connect to backend server.');
+      }
     } finally {
       setIsLoading(false);
       setIsRecalculating(false);

@@ -13,8 +13,8 @@ class MatchResponse(BaseModel):
 
 class ComparisonRequest(BaseModel):
     query: str
-    cross_marketplace: bool = Field(default=True, alias="cross_platform")
     cross_platform: Optional[bool] = None
+    cross_marketplace: Optional[bool] = None
     weights: Optional[Dict[str, float]] = None
 
     model_config = ConfigDict(populate_by_name=True)

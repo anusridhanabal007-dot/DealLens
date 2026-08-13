@@ -35,13 +35,18 @@ async def compare_listings(req: ComparisonRequest):
     if not req.query or not req.query.strip():
         raise HTTPException(status_code=400, detail="Query parameter cannot be empty.")
     
-    is_cross = req.cross_platform if req.cross_platform is not None else req.cross_marketplace
-    result = await comparison_service.compare_query(
-        query=req.query.strip(),
-        cross_marketplace=is_cross,
-        custom_weights=req.weights
-    )
-    return result
+    is_cross = req.cross_platform if req.cross_platform is not None else (req.cross_marketplace if req.cross_marketplace is not None else True)
+    try:
+        result = await comparison_service.compare_query(
+            query=req.query.strip(),
+            cross_marketplace=is_cross,
+            custom_weights=req.weights
+        )
+        return result
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 @router.post("/extract", response_model=ExtractionResponse)
 async def extract_listing_info(req: ExtractionRequest):

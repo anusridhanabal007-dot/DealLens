@@ -13,6 +13,33 @@ class ValueScoringEngine:
         delivery = float(listing.get("delivery_fee", 0.0))
         return round(price + delivery, 2)
 
+    def validate_and_normalize_weights(self, custom_weights: Optional[Dict[str, float]]) -> Dict[str, float]:
+        if not custom_weights:
+            return dict(self.DEFAULT_WEIGHTS)
+
+        keys = ["price", "seller", "warranty", "delivery"]
+        weights_dict = {}
+        for k in keys:
+            if k in custom_weights and custom_weights[k] is not None:
+                val = float(custom_weights[k])
+                if val < 0:
+                    raise ValueError(f"Weight for '{k}' cannot be negative (got {val}).")
+                weights_dict[k] = val
+            else:
+                weights_dict[k] = self.DEFAULT_WEIGHTS[k]
+
+        total_w = sum(weights_dict.values())
+
+        # Decimal scale (approx 1.0) or Percentage scale (approx 100.0)
+        if abs(total_w - 1.0) <= 0.05:
+            return {k: weights_dict[k] / total_w for k in keys}
+        elif abs(total_w - 100.0) <= 2.0:
+            return {k: (weights_dict[k] / 100.0) / (total_w / 100.0) for k in keys}
+        else:
+            raise ValueError(
+                f"Invalid weight configuration: Total weights must equal 100% or 1.0 (received total of {total_w})."
+            )
+
     def calculate_scores(
         self,
         listings: List[Dict[str, Any]],
@@ -21,12 +48,7 @@ class ValueScoringEngine:
         if not listings:
             return {}
 
-        weights = dict(self.DEFAULT_WEIGHTS)
-        if custom_weights:
-            # Normalize user custom weights so they sum to 1.0
-            total_w = sum(custom_weights.values())
-            if total_w > 0:
-                weights = {k: custom_weights.get(k, self.DEFAULT_WEIGHTS[k]) / total_w for k in self.DEFAULT_WEIGHTS}
+        weights = self.validate_and_normalize_weights(custom_weights)
 
         # Calculate effective prices first
         effective_prices = []
